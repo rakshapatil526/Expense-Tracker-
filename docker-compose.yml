@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: expensetracker_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: expensetracker_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d expensetracker_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: expensetracker_backend
+    restart: always
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: "prod-secret-key-replace-in-production"
+      ALLOWED_HOSTS: "*"
+      DB_ENGINE: "postgres"
+      DB_NAME: "expensetracker_db"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgrespassword"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: expensetracker_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
